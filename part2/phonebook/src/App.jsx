@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+
+import personService from "./services/persons";
 
 import Filter from "./components/Filter";
 import Form from "./components/Form";
@@ -13,35 +14,52 @@ const App = () => {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
-    axios.get("http://localhost:3001/persons").then((response) => {
-      setPersons(response.data);
+    personService.getAll().then((initialPersons) => {
+      setPersons(initialPersons);
     });
   }, []);
 
   const duplicatesCheck = () => {
-    return (
-      persons.filter((p) => p.name.toLowerCase() === newName.toLowerCase())
-        .length > 0
+    return persons.filter(
+      (p) => p.name.toLowerCase() === newName.toLowerCase()
     );
   };
 
   const handleAddPerson = (e) => {
     e.preventDefault();
 
+    const newPerson = {
+      name: newName,
+      number: newNumber,
+    };
+
     const duplicates = duplicatesCheck();
-    if (duplicates) {
-      alert(`${newName} is already in the phonebook`);
-      return;
+
+    if (duplicates.length > 0) {
+      const confirmReplace = window.confirm(
+        `${duplicates[0].name} is already in the phonebook. Replace the old number?`
+      );
+
+      if (confirmReplace) {
+        personService
+          .update(duplicates[0].id, newPerson)
+          .then((changedPerson) => {
+            setPersons(
+              persons.map((person) =>
+                person.id !== duplicates[0].id ? person : changedPerson
+              )
+            );
+            setNewName("");
+            setNewNumber("");
+          });
+      }
     }
 
-    setPersons(
-      persons.concat({
-        name: newName,
-        number: newNumber,
-      })
-    );
-    setNewName("");
-    setNewNumber("");
+    personService.create(newPerson).then((createdPerson) => {
+      setPersons(persons.concat(createdPerson));
+      setNewName("");
+      setNewNumber("");
+    });
   };
 
   const handleNameInput = (e) => {
@@ -56,8 +74,17 @@ const App = () => {
     setFilter(e.target.value);
   };
 
+  const handleDelete = (personObj) => {
+    const confirmDelete = window.confirm(`Delete ${personObj.name}?`);
+    if (confirmDelete) {
+      personService.remove(personObj.id).then((response) => {
+        setPersons(persons.filter((person) => person.id !== personObj.id));
+      });
+    }
+  };
+
   const personsToShow = filter
-    ? persons.filter((p) => p.name.toLowerCase().includes(filter))
+    ? persons.filter((person) => person.name.toLowerCase().includes(filter))
     : persons;
 
   return (
@@ -72,7 +99,7 @@ const App = () => {
         newNumber={newNumber}
         onNumberInput={handleNumberInput}
       />
-      <Numbers personsToShow={personsToShow} />
+      <Numbers personsToShow={personsToShow} onDelete={handleDelete} />
     </div>
   );
 };

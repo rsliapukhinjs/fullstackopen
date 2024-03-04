@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
+import noteService from "./services/notes";
+
 import Note from "./components/Note";
 
 const App = ({ data }) => {
@@ -9,26 +11,23 @@ const App = ({ data }) => {
   const [showAll, setShowAll] = useState(true);
 
   useEffect(() => {
-    console.log("Effect");
-    axios.get("http://localhost:3001/notes").then((response) => {
-      console.log("Promise fullfiled");
-      setNotes(response.data);
+    noteService.getAll().then((initialNotes) => {
+      setNotes(initialNotes);
     });
   }, []);
-
-  console.log("Render", notes.length, "notes");
 
   const addNote = (e) => {
     e.preventDefault();
 
     const noteObj = {
-      id: notes.length + 1,
       content: newNote,
       important: Math.random() > 0.5,
     };
 
-    setNotes(notes.concat(noteObj));
-    setNewNote("");
+    noteService.create(noteObj).then((createdNote) => {
+      setNotes(notes.concat(createdNote));
+      setNewNote("");
+    });
   };
 
   const handleNoteChange = (e) => {
@@ -36,6 +35,24 @@ const App = ({ data }) => {
   };
 
   const notesToShow = showAll ? notes : notes.filter((n) => n.important);
+
+  const toggleImportance = (id) => {
+    const note = notes.find((note) => note.id === id);
+    const changedNote = {
+      ...note,
+      important: !note.important,
+    };
+
+    noteService
+      .update(note.id, changedNote)
+      .then((updatedNote) => {
+        setNotes(notes.map((note) => (note.id !== id ? note : updatedNote)));
+      })
+      .catch((error) => {
+        alert(`note is not on the server`);
+        setNotes(notes.filter((note) => note.id !== id));
+      });
+  };
 
   return (
     <div>
@@ -45,11 +62,11 @@ const App = ({ data }) => {
           Show {showAll ? "important" : "all"}
         </button>
       </div>
-      <ul>
+      <div>
         {notesToShow.map((note) => (
-          <Note note={note} key={note.id} />
+          <Note note={note} key={note.id} toggleImportance={toggleImportance} />
         ))}
-      </ul>
+      </div>
       <form onSubmit={addNote}>
         <input type="text" value={newNote} onChange={handleNoteChange} />
         <button type="submit">Save</button>
