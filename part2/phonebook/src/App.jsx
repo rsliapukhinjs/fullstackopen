@@ -52,15 +52,21 @@ const App = () => {
               `Updated number for ${changedPerson.name}`,
               "success"
             );
+          })
+          .catch((error) => {
+            messageUpdate(error.response.data.error);
           });
       }
     } else {
-      personService.create(newPerson).then((createdPerson) => {
-        setPersons(persons.concat(createdPerson));
-        setNewName("");
-        setNewNumber("");
-        messageUpdate(`Added number for ${createdPerson.name}`, "success");
-      });
+      personService
+        .create(newPerson)
+        .then((createdPerson) => {
+          setPersons(persons.concat(createdPerson));
+          setNewName("");
+          setNewNumber("");
+          messageUpdate(`Added number for ${createdPerson.name}`, "success");
+        })
+        .catch((error) => messageUpdate(`${error.response.data.error}`));
     }
   };
 
